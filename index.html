@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMAX, DMIN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <style>
+        body { 
+            font-family: 'Pretendard', sans-serif; 
+            background-color: #f8fafc; 
+            color: #333; 
+            padding: 20px;
+        }
+        
+        /* 헤더 배너 */
+        .header-banner {
+            background-color: #107c41;
+            color: white;
+            padding: 20px 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(16, 124, 65, 0.2);
+            text-align: center;
+        }
+        .header-banner h1 { margin: 0 0 5px 0; font-size: 32px; font-weight: 900; letter-spacing: 1px; }
+        .header-banner p { margin: 0; font-size: 16px; opacity: 0.9; }
+        
+        /* 설명 박스 */
+        .summary-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 6px solid #107c41;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        
+        /* 엑셀 UI 스타일 */
+        .excel-container { 
+            border: 1px solid #cbd5e1; 
+            background-color: #fff; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            border-radius: 8px; 
+            overflow: hidden; 
+            margin-bottom: 30px;
+        }
+        
+        /* 수식 입력줄 */
+        .formula-bar-container { 
+            display: flex; align-items: center; border-bottom: 1px solid #cbd5e1; 
+            padding: 8px 15px; background-color: #f1f5f9; 
+        }
+        .fx-icon { font-style: italic; font-weight: bold; color: #107c41; margin-right: 15px; font-family: serif; font-size: 18px; }
+        .formula-bar { flex-grow: 1; font-family: 'Consolas', monospace; font-size: 16px; font-weight: bold; letter-spacing: 0.5px; background: white; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; overflow-x: auto; white-space: nowrap; }
+        
+        /* 테이블 스타일 */
+        .excel-table { width: 100%; border-collapse: collapse; font-size: 15px; text-align: center; }
+        .excel-table th, .excel-table td { border: 1px solid #e2e8f0; padding: 10px; position: relative; }
+        .excel-table th { background-color: #f1f5f9; color: #475569; font-weight: bold; }
+        .excel-table .row-num { background-color: #f1f5f9; width: 40px; color: #475569; font-weight: bold; }
+        .header-col { background-color: #e2e8f0; font-weight: bold; }
+        
+        /* 입력 컨트롤 */
+        .control-input { 
+            width: 100%; padding: 5px; border: 2px solid transparent; border-radius: 4px; 
+            font-weight: bold; text-align: center; outline: none; transition: all 0.2s; 
+            font-family: inherit; font-size: 15px; cursor: pointer; color: #dc2626;
+        }
+        .control-input:focus, .control-input:hover { border-color: #dc2626; background-color: #fef2f2; }
+        
+        /* 구문 강조 (Syntax Highlighting) */
+        .fn { color: #0000FF; font-weight: bold; }
+        .paren1 { color: #dc2626; font-weight: bold; } /* 1단계 괄호: 빨강 */
+        .paren2 { color: #16a34a; font-weight: bold; } /* 2단계 괄호: 초록 */
+        .str { color: #008000; font-weight: bold; }
+        .comma { color: #333; }
+        
+        .ref-data { color: #2563eb; font-weight: bold; } /* 데이터 범위: 파랑 */
+        .ref-crit { color: #dc2626; font-weight: bold; } /* 조건 범위: 빨강 */
+        
+        /* 데이터 범위 하이라이트 (파란색 테두리 및 배경) */
+        .highlight-data { background-color: rgba(37, 99, 235, 0.05) !important; }
+        .highlight-data-top { border-top: 2px solid #2563eb !important; }
+        .highlight-data-bottom { border-bottom: 2px solid #2563eb !important; }
+        .highlight-data-left { border-left: 2px solid #2563eb !important; }
+        .highlight-data-right { border-right: 2px solid #2563eb !important; }
+
+        /* 조건 범위 하이라이트 (빨간색 테두리 및 배경) */
+        .highlight-crit { background-color: rgba(220, 38, 38, 0.05) !important; }
+        .highlight-crit-top { border-top: 2px solid #dc2626 !important; }
+        .highlight-crit-bottom { border-bottom: 2px solid #dc2626 !important; }
+        .highlight-crit-left { border-left: 2px solid #dc2626 !important; }
+        .highlight-crit-right { border-right: 2px solid #dc2626 !important; }
+
+        .result-dmax { font-weight: 900; font-size: 18px; color: #1d4ed8; background-color: #eff6ff; }
+        .result-dmin { font-weight: 900; font-size: 18px; color: #b91c1c; background-color: #fef2f2; }
+        
+        /* 클릭된 결과 셀 강조 */
+        .active-result { outline: 3px solid #107c41; outline-offset: -2px; }
+    </style>
+</head>
+<body class="max-w-5xl mx-auto">
+
+    <div class="header-banner">
+        <h1>DMAX, DMIN</h1>
+        <p>전체 표(데이터베이스)에서 특정 조건을 만족하는 데이터 중 최댓값과 최솟값을 찾습니다.</p>
+    </div>
+
+    <!-- 요약 박스 -->
+    <div class="summary-card">
+        <h2 class="text-xl font-bold text-gray-800 mb-2">💡 데이터베이스 함수 (D함수)의 기본 구조</h2>
+        <div class="mt-2 mb-4 bg-gray-50 p-4 rounded border border-gray-200 font-mono text-[15px] text-gray-700">
+            =DMAX(<span class="ref-data">데이터범위(표 전체)</span>, <span class="str">"계산할 열 제목"</span>, <span class="ref-crit">조건범위</span>)<br>
+            =DMIN(<span class="ref-data">데이터범위(표 전체)</span>, <span class="str">"계산할 열 제목"</span>, <span class="ref-crit">조건범위</span>)
+        </div>
+        <ul class="list-disc pl-5 text-gray-600 space-y-1 font-medium">
+            <li><strong class="text-blue-600">데이터범위:</strong> 반드시 표의 <strong>제목(헤더)</strong>을 포함해서 전체를 잡아야 합니다.</li>
+            <li><strong class="text-green-700">열 제목:</strong> 값을 구할 타겟이 되는 열의 이름을 큰따옴표("")로 적어줍니다.</li>
+            <li><strong class="text-red-600">조건범위:</strong> 표 바깥에 적어둔 '조건 제목'과 '조건 값'을 함께 드래그합니다.</li>
+        </ul>
+    </div>
+
+    <p class="text-gray-600 mb-2 font-bold text-[15px]">
+        👇 아래 표의 <strong>빨간색 부서명(E2)</strong>을 클릭하여 기획팀/영업팀을 변경해 보세요. <br>
+        결과 셀(F2, F3)을 클릭하면 해당 수식이 상단에 표시됩니다!
+    </p>
+
+    <div class="excel-container">
+        <!-- 수식 입력줄 -->
+        <div class="formula-bar-container">
+            <div class="fx-icon">fx</div>
+            <div class="formula-bar" id="formula-bar">
+                <span class="text-gray-400 font-normal">결과 셀을 클릭하면 수식이 표시됩니다.</span>
+            </div>
+        </div>
+        
+        <table class="excel-table">
+            <thead>
+                <tr>
+                    <th class="row-num"></th>
+                    <th>A</th>
+                    <th>B</th>
+                    <th>C</th>
+                    <th>D</th>
+                    <th>E</th>
+                    <th>F</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 1행: 헤더 -->
+                <tr>
+                    <td class="row-num">1</td>
+                    <td class="header-col highlight-data highlight-data-top highlight-data-left">이름</td>
+                    <td class="header-col highlight-data highlight-data-top">부서</td>
+                    <td class="header-col highlight-data highlight-data-top highlight-data-right">실적점수</td>
+                    <td></td>
+                    <td class="header-col highlight-crit highlight-crit-top highlight-crit-left highlight-crit-right">부서</td>
+                    <td></td>
+                </tr>
+                <!-- 2행 -->
+                <tr>
+                    <td class="row-num">2</td>
+                    <td class="highlight-data highlight-data-left">김지훈</td>
+                    <td class="highlight-data">기획팀</td>
+                    <td class="highlight-data highlight-data-right">85</td>
+                    <td></td>
+                    <td class="highlight-crit highlight-crit-bottom highlight-crit-left highlight-crit-right p-0">
+                        <select id="criteria-dept" class="control-input h-full w-full">
+                            <option value="기획팀" selected>기획팀</option>
+                            <option value="영업팀">영업팀</option>
+                        </select>
+                    </td>
+                    <td class="result-dmax active-result cursor-pointer" id="cell-dmax" onclick="showFormula('dmax')"></td>
+                </tr>
+                <!-- 3행 -->
+                <tr>
+                    <td class="row-num">3</td>
+                    <td class="highlight-data highlight-data-left">이서연</td>
+                    <td class="highlight-data">영업팀</td>
+                    <td class="highlight-data highlight-data-right">92</td>
+                    <td></td>
+                    <td></td>
+                    <td class="result-dmin cursor-pointer" id="cell-dmin" onclick="showFormula('dmin')"></td>
+                </tr>
+                <!-- 4행 -->
+                <tr>
+                    <td class="row-num">4</td>
+                    <td class="highlight-data highlight-data-left">박민준</td>
+                    <td class="highlight-data">기획팀</td>
+                    <td class="highlight-data highlight-data-right">78</td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-gray-500 font-bold text-sm bg-gray-50 border-none pt-4">↑ DMAX (최고 실적)</td>
+                </tr>
+                <!-- 5행 -->
+                <tr>
+                    <td class="row-num">5</td>
+                    <td class="highlight-data highlight-data-left">최지아</td>
+                    <td class="highlight-data">영업팀</td>
+                    <td class="highlight-data highlight-data-right">88</td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-gray-500 font-bold text-sm bg-gray-50 border-none">↑ DMIN (최저 실적)</td>
+                </tr>
+                <!-- 6행 -->
+                <tr>
+                    <td class="row-num">6</td>
+                    <td class="highlight-data highlight-data-left highlight-data-bottom">정우진</td>
+                    <td class="highlight-data highlight-data-bottom">기획팀</td>
+                    <td class="highlight-data highlight-data-right highlight-data-bottom">95</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 원본 데이터 배열
+        const dataRecords = [
+            { name: '김지훈', dept: '기획팀', score: 85 },
+            { name: '이서연', dept: '영업팀', score: 92 },
+            { name: '박민준', dept: '기획팀', score: 78 },
+            { name: '최지아', dept: '영업팀', score: 88 },
+            { name: '정우진', dept: '기획팀', score: 95 }
+        ];
+
+        let currentActive = 'dmax'; // 기본 선택 수식
+
+        // 데이터 계산 및 UI 업데이트
+        function calculateDFunctions() {
+            const selectedDept = document.getElementById('criteria-dept').value;
+            
+            // 조건에 맞는 점수만 필터링
+            const filteredScores = dataRecords.filter(d => d.dept === selectedDept).map(d => d.score);
+            
+            let dmax = 0;
+            let dmin = 0;
+            
+            if(filteredScores.length > 0) {
+                dmax = Math.max(...filteredScores);
+                dmin = Math.min(...filteredScores);
+            }
+            
+            // 결과 셀에 값 쓰기
+            document.getElementById('cell-dmax').innerText = dmax;
+            document.getElementById('cell-dmin').innerText = dmin;
+
+            // 현재 선택된 수식 다시 렌더링
+            showFormula(currentActive);
+        }
+
+        // 수식 표시 (구문 강조 적용)
+        function showFormula(type) {
+            currentActive = type;
+            
+            // 선택된 셀 시각적 강조
+            document.getElementById('cell-dmax').classList.remove('active-result');
+            document.getElementById('cell-dmin').classList.remove('active-result');
+            document.getElementById(`cell-${type}`).classList.add('active-result');
+
+            const formulaBar = document.getElementById('formula-bar');
+            const funcName = type === 'dmax' ? 'DMAX' : 'DMIN';
+            
+            // 괄호 색상 (빨강색 paren1) 과 각 요소별 구문 강조
+            const html = `
+                <span style="color:#333; font-weight:bold;">=</span><span class="fn">${funcName}</span><span class="paren1">(</span><span class="ref-data">A1:C6</span><span class="comma">, </span><span class="str">"실적점수"</span><span class="comma">, </span><span class="ref-crit">E1:E2</span><span class="paren1">)</span>
+            `;
+            
+            formulaBar.innerHTML = html;
+        }
+
+        // 이벤트 리스너: 드롭다운 변경 시
+        document.getElementById('criteria-dept').addEventListener('change', calculateDFunctions);
+
+        // 초기 실행
+        calculateDFunctions();
+    </script>
+</body>
+</html>
